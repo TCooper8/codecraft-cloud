@@ -3,6 +3,8 @@
   "dependencies": {
     "codecraft/pman": true
   },
-  "scripts": {
-  }
+  "publish": [
+    "npm install ./",
+    "sbt compile publish-local"
+  ]
 }
