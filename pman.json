@@ -1,0 +1,8 @@
+{
+  "name": "codecraft/cloud",
+  "dependencies": {
+    "codecraft/pman": true
+  },
+  "scripts": {
+  }
+}
