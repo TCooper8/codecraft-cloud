@@ -59,7 +59,7 @@ private[amqp] class AmqpConnectionActor(
     case exn =>
       // Volatile
       sender ! Failure(exn)
-      throw exn
+      //throw exn
   }
 
   def setupRoutes(chan: Channel) {
