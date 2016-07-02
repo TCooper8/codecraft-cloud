@@ -5,6 +5,6 @@
   },
   "publish": [
     "npm install ./",
-    "sbt compile publish-local"
+    "sbt clean compile publish-local"
   ]
 }
