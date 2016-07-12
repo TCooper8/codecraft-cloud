@@ -5,6 +5,7 @@
   },
   "publish": [
     "npm install ./",
+    "fsharpc -r Newtonsoft.Json.dll -r RabbitMQ.Client.dll -r RabbitMQ.ServiceModel.dll -r Codegen.dll --target:library -o Cloud.dll src/main/fsharp/ICloud.fs",
     "sbt clean compile publish-local"
   ]
 }
