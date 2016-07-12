@@ -22,18 +22,13 @@ private[amqp] class AmqpCloudActor(
   val factory = new ConnectionFactory()
 
   def receive = {
-    case Connect(endPoints) =>
+    case Connect(endPoint) =>
       Try {
-        // Parse the end points to RabbitMQ addresses.
-        log.info(s"Parsing address list from $endPoints")
-        val addresses = endPoints.map {
-          case endPoint =>
-            val uri = new URI(endPoint)
-            new com.rabbitmq.client.Address(uri.getHost, uri.getPort)
-        } toArray
+        log.info(s"Connecting to RabbitMQ...")
 
-        log.info(s"Connecting to RabbitMQ with $addresses")
-        val conn = factory.newConnection(addresses)
+        factory setUri endPoint
+        val conn = factory.newConnection()
+
         val chan = conn.createChannel()
         val privateQueueName = chan.queueDeclare.getQueue
 

@@ -11,7 +11,7 @@ private[amqp] object AmqpCloudCommands {
 
   // Connecting
   final case class Connect(
-    endPoints: List[String]
+    endPoint: String
   ) extends Cmd
 
   final case class RequestCmd(
@@ -32,6 +32,16 @@ private[amqp] object AmqpCloudCommands {
     groupKey: String,
     service: CmdGroupConsumer
   )
+
+  final case class PublishEvent(
+    eventKey: String,
+    event: Any
+  ) extends Cmd
+
+  final case class SubscribeEvent(
+    eventKey: String,
+    method: Any => Unit
+  ) extends Cmd
 
   final case class SubscribeCmdReply(
     result: Try[Any]

@@ -14,7 +14,7 @@ final case object UserStoreCmdGroupKey extends CmdGroupKey
 trait ICloud {
   def requestCmd(cmdKey: String, cmd: Any, timeoutDur: FiniteDuration): Future[Any]
   def subscribeCmd(groupKey: String, service: CmdGroupConsumer, timeoutDur: FiniteDuration = 5 seconds): Future[Unit]
-  //def publishEvent(eventKey: String, event: Any, timeoutDur: FiniteDuration): Future[Unit]
-  //def subscribeEvent(eventKey: String, actor: ActorRef, timeoutDur: FiniteDuration): Future[Unit]
+  def publishEvent(eventKey: String, event: Any): Future[Unit]
+  def subscribeEvent(eventKey: String, method: Any => Unit): Future[Unit]
   def disconnect(): Unit
 }

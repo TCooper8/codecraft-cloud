@@ -167,6 +167,8 @@ private[amqp] class AmqpConnectionActor(
       val data = info.serializeCmd(msg.cmd).get
       val id = uuid
 
+      log.info(s"Publishing request to queue ${info.key}")
+
       val props = new AMQP.BasicProperties
         .Builder()
         .correlationId(id)
@@ -206,7 +208,47 @@ private[amqp] class AmqpConnectionActor(
     } recover handleFailure
   }
 
+  def subscribeEvent(msg: SubscribeEvent) {
+    Try {
+      log.info(s"Handling SubscribeEvent $msg")
+
+      val info = routingInfo event msg.eventKey
+      val chanActor = channelActors.getOrElseUpdate(info.key, {
+        val chan = conn.createChannel
+        val props = AmqpChannelActor.props(chan, routingInfo)
+        val child = context.actorOf(props)
+
+        context watch child
+
+        child
+      })
+
+      chanActor.tell(msg, sender)
+    } recover handleFailure
+  }
+
+  def publishEvent(msg: PublishEvent) {
+    Try {
+      // Get the routing info and serialize this event.
+      val info = routingInfo event (msg.eventKey)
+      val data = info serialize (msg.event) get
+
+      // Publish this event.
+      val props = new AMQP.BasicProperties
+        .Builder()
+        .build()
+      privateChan.basicPublish(
+        info exchange,
+        info key,
+        props,
+        data
+      )
+    } recover handleFailure
+  }
+
   def receive = {
+    case msg: PublishEvent => publishEvent(msg)
+    case msg: SubscribeEvent => subscribeEvent(msg)
     case msg: RequestCmd => handleRequestCmd(msg)
     case msg: SubscribeCmd => handleSubscribeCmd(msg)
     case event: Delivery => handleDelivery(event)

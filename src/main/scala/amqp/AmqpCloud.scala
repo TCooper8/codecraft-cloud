@@ -11,6 +11,7 @@ import codecraft.codegen._
 
 final case class RoutingInfo(
   val cmd: Map[String, CmdRegistry],
+  val event: Map[String, EventRegistry],
   val group: Map[String, GroupRouting]
 )
 
@@ -54,8 +55,27 @@ private[amqp] class AmqpCloud(
     Await.result(task, timeoutDur)
   }
 
-  def subscribeEvent(eventKey: String, actor: ActorRef, timeoutDur: FiniteDuration = 5 seconds): Future[Unit] = Future {
-    ()
+  def publishEvent(eventKey: String, event: Any): Future[Unit] = Future {
+    println(s"Publishing event $eventKey => $event")
+    // Verify that the event key is valid.
+    routingInfo event eventKey
+
+    val timeout = Timeout(180 hours)
+    val task = (cloudActor ? PublishEvent(eventKey, event))(timeout) flatMap {
+      case Success(_) => Future{ () }
+      case Failure(e) => Future.failed(e)
+    }
+    Await.result(task, timeout.duration)
+  }
+
+  def subscribeEvent(eventKey: String, method: Any => Unit): Future[Unit] = Future {
+    // Verify that the event key is valid.
+    routingInfo event eventKey
+    val timeout = Timeout(180 hours)
+    (cloudActor ? SubscribeEvent(eventKey, method))(timeout) flatMap {
+      case Failure(e) => Future failed e
+      case _ => Future{ () }
+    }
   }
 
   def disconnect() {
@@ -69,13 +89,13 @@ private[amqp] class AmqpCloud(
 object AmqpCloud {
   import AmqpCloudCommands.Connect
 
-  def apply(system: ActorSystem, endPoints: List[String], routingInfo: RoutingInfo): ICloud = {
+  def apply(system: ActorSystem, endPoint: String, routingInfo: RoutingInfo): ICloud = {
     val cloudActor = system.actorOf(
       AmqpCloudActor.props(routingInfo)
     )
     implicit val ex = system.dispatcher
     val timeout = Timeout(10 seconds)
-    val task = (cloudActor ? Connect(endPoints))(timeout).mapTo[Try[ActorRef]]
+    val task = (cloudActor ? Connect(endPoint))(timeout).mapTo[Try[ActorRef]]
     val conn = Await.result(task, timeout.duration).get
 
     println(s"Created cloud with $routingInfo")

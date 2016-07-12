@@ -19,13 +19,14 @@ private[amqp] class AmqpChannelActor(
   routingInfo: RoutingInfo
 ) extends Actor with ActorLogging {
   import AmqpChannelActor._
-  import AmqpCloudCommands.{SubscribeCmd, ShutdownCmd}
+  import AmqpCloudCommands.{SubscribeCmd, ShutdownCmd, SubscribeEvent}
   import AmqpCloudEvents.{Delivery, DeliveryFailure, DeliverySuccess}
 
   import context._
 
   val cmdSubscriptions = mutable.Map.empty[String, List[CmdGroupConsumer]]
   val cmdSubscriptionServiceIndex = mutable.Map.empty[String, String]
+  val eventSubscriptions = mutable.Map.empty[String, List[Any => Unit]]
 
   log.info(s"Started channel $self")
 
@@ -95,6 +96,69 @@ private[amqp] class AmqpChannelActor(
 
           case Success(reply) =>
             sender ! Success(reply)
+        }
+    }
+  }
+
+  def handleSubscribeEvent(cmd: SubscribeEvent) = {
+    Try { routingInfo event cmd.eventKey } match {
+      case Failure(e) =>
+        // Unable to get info, send back a failure response.
+        sender ! Failure(e)
+
+      case Success(info) =>
+        // If any of this fails, there is a connection issue.
+        Try {
+          val consumer = new DefaultConsumer(chan) {
+            override def handleDelivery(
+              consumerTag: String,
+              envelope: Envelope,
+              props: AMQP.BasicProperties,
+              body: Array[Byte]
+            ) = {
+              // Deserialize this event and pipe it to the method.
+              Try {
+                val event = info.deserialize(body).get
+                log.info(s"Got event $event")
+
+                cmd.method(event)
+              } recover { case e =>
+                log.warning(s"Consumer for ${cmd.eventKey} encountered error: $e")
+              }
+            }
+          }
+
+          // Create a new queue to consume these events.
+          val queueName = chan.queueDeclare.getQueue
+
+          chan.exchangeDeclare(
+            info.exchange,
+            "topic",
+            true,
+            false,
+            false,
+            null
+          )
+
+          chan.queueBind(
+            queueName,
+            info.exchange,
+            cmd.eventKey
+          )
+
+          chan.basicConsume(
+            queueName,
+            true,
+            consumer
+          )
+          log.info(s"Started consumer for ${cmd.eventKey}-$sender")
+        } match {
+          case Failure(e) =>
+            sender ! Failure(e)
+            throw e
+
+          case Success(_) =>
+            sender ! Success(())
         }
     }
   }
@@ -229,6 +293,7 @@ private[amqp] class AmqpChannelActor(
 
   def receiveCloudCommands: Receive = {
     case cmd: SubscribeCmd => handleSubscribeCmd(cmd)
+    case cmd: SubscribeEvent => handleSubscribeEvent(cmd)
   }
 
   def receiveCloudEvents: Receive = {
