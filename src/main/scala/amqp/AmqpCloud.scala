@@ -9,12 +9,6 @@ import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import codecraft.codegen._
 
-final case class RoutingInfo(
-  val cmd: Map[String, CmdRegistry],
-  val event: Map[String, EventRegistry],
-  val group: Map[String, GroupRouting]
-)
-
 private[amqp] class AmqpCloud(
   routingInfo: RoutingInfo,
   system: ActorSystem,
@@ -30,7 +24,7 @@ private[amqp] class AmqpCloud(
 
   def requestCmd(cmdKey: String, cmd: Any, timeoutDur: FiniteDuration = 5 seconds): Future[Any] = Future {
     val timeout = Timeout(timeoutDur)
-    val task = (cloudActor ? RequestCmd(s"cmd.$cmdKey", cmd))(timeout).map {
+    val task = (cloudActor ? RequestCmd(cmdKey, cmd))(timeout).map {
       case Failure(e) => throw e
       case Success(result) =>
         result match {
