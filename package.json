@@ -1,0 +1,15 @@
+{
+  "name": "codecraft-cloud",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "gen": "node node_modules/codecraft-codegen/src/main/nodejs/index.js --routes --scala_out src/main/scala node_modules/codecraft-messages/src/main/proto/",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "codecraft-codegen": "git+https://github.com/tcooper8/codecraft-codegen.git"
+  }
+}
