@@ -10,7 +10,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "codecraft-codegen": "file:../codecraft-codegen",
-    "pman": "file:../pman"
+    "codecraft-codegen": "git+https://github.com/tcooper8/codecraft-codegen.git"
   }
 }
